@@ -27,7 +27,7 @@ function chartSize(id,defH){var el=$(''+id),w=560,h=defH||240;if(el){var r=el.ge
 function fitText(s,n){s=String(s||'');return s.length>n?s.slice(0,n).trim()+'…':s}
 function cityShortName(s){s=String(s||'').trim();if(!s)return'';var t=s.toLowerCase().split(/\s+/).filter(function(w){return w&&['da','de','do','das','dos','e'].indexOf(w)<0});if(t.length>=2){var a=(t[0].charAt(0).toUpperCase()+t[0].slice(1)),b=(t[1].charAt(0).toUpperCase()+t[1].slice(1));var joined=a+' '+b;return joined.length>12?joined.slice(0,10).trim()+'...':joined}var cap=s.charAt(0).toUpperCase()+s.slice(1).toLowerCase();return cap.length>12?cap.slice(0,10).trim()+'...':cap}
 function pieColor(i){var colors=[css('--blue'),css('--red'),css('--orange'),css('--green'),css('--purple'),css('--yellow'),'#38bdf8','#fb7185','#14b8a6','#a78bfa'];return colors[i%colors.length]}
-var CSV_B64='',CSV_URL='./BASE%20TEREX.csv',CSV_EXPECTED=11512,META=97,PAGE=1,SIZE=10,RAW=[],DATA=[];var MONTHS={1:'Jan',2:'Fev',3:'Mar',4:'Abr',5:'Mai',6:'Jun',7:'Jul',8:'Ago',9:'Set',10:'Out',11:'Nov',12:'Dez'},ALL_UF='AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
+var CSV_B64='',CSV_URL='./base.csv',CSV_EXPECTED=11512,META=97,PAGE=1,SIZE=10,RAW=[],DATA=[];var MONTHS={1:'Jan',2:'Fev',3:'Mar',4:'Abr',5:'Mai',6:'Jun',7:'Jul',8:'Ago',9:'Set',10:'Out',11:'Nov',12:'Dez'},ALL_UF='AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
 function $(id){return document.getElementById(id)}function css(v){return getComputedStyle(document.body).getPropertyValue(v).trim()}function fmtN(n){return Math.round(n||0).toLocaleString('pt-BR')}function pct(v){return (v||0).toFixed(1).replace('.',',')+'%'}function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}function fmtD(d){return d?d.toLocaleDateString('pt-BR'):'—'}function toggleTheme(){document.body.classList.toggle('light');$('themeBtn').textContent=document.body.classList.contains('light')?'🌙':'☀';render()}
 function validaAbril2026(){var total=RAW.filter(function(r){return r.ent&&MONTHS[r.ent.getMonth()+1]==='Abr'&&String(r.ent.getFullYear())==='2026'}).length;console.log('Validação Abril/2026 por Data da entrega:',total,'esperado: 539');return total}
 function nav(id,el){document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active')});$('p-'+id).classList.add('active');document.querySelectorAll('.nav').forEach(function(n){n.classList.remove('active')});el.classList.add('active');$('title').textContent={visao:'Visão Geral',transp:'Transportador',destino:'Destino',mapa:'Mapa UF',oc:'Ocorrências'}[id];PAGE=1;render();detail()}
@@ -71,15 +71,15 @@ function b64(b){var bin=atob(b),arr=new Uint8Array(bin.length);for(var i=0;i<bin
 var _resizeTimer=null;function scheduleRender(){clearTimeout(_resizeTimer);_resizeTimer=setTimeout(function(){try{render()}catch(e){console.warn('render resize',e)}},160)}
 if(window.ResizeObserver){var _ro=new ResizeObserver(scheduleRender);setTimeout(function(){document.querySelectorAll('.chart,#mapaUF,#leafletUF').forEach(function(el){_ro.observe(el)})},500)}window.addEventListener('resize',scheduleRender);
 var csvInput=$('csvFile');if(csvInput){csvInput.addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(x){load(x.target.result)};r.readAsText(f,'utf-8')});}
-function loadBaseTerexGithub(){
+function loadBaseCsvGithub(){
   try{
     document.body.classList.add('light');
     if($('themeBtn')) $('themeBtn').textContent='🌙';
   }catch(e){}
-  var url=(typeof CSV_URL!=='undefined'?CSV_URL:'./BASE%20TEREX.csv')+'?v='+Date.now();
+  var url=(typeof CSV_URL!=='undefined'?CSV_URL:'./base.csv')+'?v='+Date.now();
   if($('status')){
     $('status').className='status show';
-    $('status').innerHTML='Carregando <b>BASE TEREX.csv</b> atualizada...';
+    $('status').innerHTML='Carregando <b>base.csv</b> atualizada...';
   }
   fetch(url,{cache:'no-store'}).then(function(resp){
     if(!resp.ok) throw new Error('HTTP '+resp.status);
@@ -90,16 +90,16 @@ function loadBaseTerexGithub(){
     if($('status')){
       $('status').className='status show';
       $('status').style.borderLeft=(total===CSV_EXPECTED?'4px solid var(--green)':'4px solid var(--red)');
-      $('status').innerHTML='BASE TEREX carregada: <b>'+fmtN(RAW.length)+'</b> NFs. Arquivo CSV: <b>'+fmtN(total)+'</b> linhas. Esperado: <b>'+fmtN(CSV_EXPECTED)+'</b>.'+(total===CSV_EXPECTED?' <b style="color:var(--green)">OK</b>':' <b style="color:var(--red)">ATENÇÃO</b>');
+      $('status').innerHTML='base.csv carregado: <b>'+fmtN(RAW.length)+'</b> NFs. Arquivo CSV: <b>'+fmtN(total)+'</b> linhas. Esperado: <b>'+fmtN(CSV_EXPECTED)+'</b>.'+(total===CSV_EXPECTED?' <b style="color:var(--green)">OK</b>':' <b style="color:var(--red)">ATENÇÃO</b>');
     }
   }).catch(function(err){
-    console.error('Erro ao carregar BASE TEREX.csv:',err);
+    console.error('Erro ao carregar base.csv:',err);
     if($('status')){
       $('status').className='status show';
       $('status').style.borderLeft='4px solid var(--red)';
-      $('status').innerHTML='Erro ao carregar <b>BASE TEREX.csv</b> pelo GitHub. Use o botão <b>CSV</b> para upload manual.';
+      $('status').innerHTML='Erro ao carregar <b>base.csv</b> pelo GitHub. Use o botão <b>CSV</b> para upload manual.';
     }
   });
 }
-loadBaseTerexGithub();
+loadBaseCsvGithub();
 </script></body></html>
