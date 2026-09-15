@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard Operacional CEVA | TEREX</title>
+<title>Control Tower | TEREX</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{--side:205px;--bg:#eef3f8;--card:#fff;--line:#d8e0eb;--txt:#152033;--muted:#60708a;--blue:#2563eb;--green:#16a34a;--red:#e2202f;--yellow:#f4c542;--black:#171717;--nav:#fff;--navtxt:#465979;--navactive:#eef1fb;--shadow:0 5px 18px rgba(20,35,60,.08)}
@@ -67,7 +67,7 @@ html[data-theme="dark"] .rawTableWrap thead th{background:#0f172a!important;colo
 const EMBEDDED='';
 const BASE_COLUMNS=['NF','Data emissão NF','Qtde. Volumes','CIA','CTRC','Data emissão CTE','Cód. Destinatário','Destinatário','Cidade Destino','UF','Agente Transporte','Tipo Agente','Data de inicio de transporte','Previsão','Data da entrega','Status','Ocorrência Entrega','Nome Recebedor','Status 2','Motivo','Status Parceiro'];let rows=[], view=[], pageNF=1, map=null, markers=null,currentPage="geral",currentMonth="",lockedMonth="",lockedYear="",rawColumns=[...BASE_COLUMNS];
 const $=id=>document.getElementById(id), pick=(o,...ks)=>{for(const k of ks)if(o[k]!==undefined&&String(o[k]).trim()!=='')return String(o[k]).trim();return ''};
-function norm(s){return String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()}
+function norm(s){return String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase()}
 function dateBR(v){if(!v)return null;let s=String(v).trim().split(' ')[0],m;if((m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)))return new Date(+m[3],+m[2]-1,+m[1]);if((m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)))return new Date(+m[1],+m[2]-1,+m[3]);return null}
 function numBR(v){if(v==null)return 0;let s=String(v).replace(/R\$/g,'').replace(/\s/g,'');if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');return Number(s)||0}
 function fmtD(d){return d instanceof Date&&!isNaN(d)?d.toLocaleDateString('pt-BR'):''}function fmtN(n){return (n||0).toLocaleString('pt-BR')}function fmtR(n){return (n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
@@ -77,7 +77,7 @@ function adapt(raw){return raw.map((o,i)=>{const nf=pick(o,'NF'),cte=pick(o,'CTR
 function opts(id,vals,label){let e=$(id),cur=e.value;e.innerHTML=`<option value="">${label}</option>`+[...new Set(vals.filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'pt-BR')).map(x=>`<option>${esc(x)}</option>`).join('');e.value=cur}
 const nomesMeses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];function setupFilters(){let fm=$('fMes'),cur=fm.value,meses=[...new Set(rows.filter(r=>r.mesRef).map(r=>String(r.mesRef.getMonth()+1).padStart(2,'0'))) ].sort();fm.innerHTML='<option value="">Todos os meses</option>'+meses.map(m=>`<option value="${m}">${nomesMeses[Number(m)-1]}</option>`).join('')+'<option value="SEM_PREV">Sem previsão</option>';fm.value=cur;opts('fAno',rows.map(r=>r.mesRef?String(r.mesRef.getFullYear()):''),'Todos os anos');opts('fReg',rows.map(r=>r.reg),'Todas regiões');opts('fTsp',rows.map(r=>r.tsp),'Todas transportadoras');opts('fUf',rows.map(r=>r.uf),'Todas UFs');opts('fCid',rows.map(r=>r.cidade),'Todas cidades')}
 function configureStatusFilter(){const e=$('fStatus');if(!e)return;const keep=e.value,statusList=['Entregue No Prazo','Entregue Fora do Prazo','Em Trânsito Dentro','Em Trânsito Fora'];e.replaceChildren(new Option('Todos os status',''),...statusList.map(s=>new Option(s,s)));e.value=statusList.includes(keep)?keep:''}
-function apply(){let q=norm($('search').value);view=rows.filter(r=>(!$('fMes').value||($('fMes').value==='SEM_PREV'?!r.mesRef:(r.mesRef&&String(r.mesRef.getMonth()+1).padStart(2,'0')===$('fMes').value)))&&(!$('fAno').value||r.mesRef&&String(r.mesRef.getFullYear())===$('fAno').value)&&(!$('fReg').value||r.reg===$('fReg').value)&&(!$('fTsp').value||r.tsp===$('fTsp').value)&&(!$('fUf').value||r.uf===$('fUf').value)&&(!$('fCid').value||r.cidade===$('fCid').value)&&(!$('fStatus').value||r.statusFonte===$('fStatus').value)&&(!q||norm([r.nf,r.dest,r.cidade,r.uf,r.tsp,r.cte].join(' ')).includes(q)));pageNF=1;renderAll()}
+function apply(){let q=norm($('search').value);view=rows.filter(r=>(!$('fMes').value||($('fMes').value==='SEM_PREV'?!r.mesRef:(r.mesRef&&String(r.mesRef.getMonth()+1).padStart(2,'0')===$('fMes').value)))&&(!$('fAno').value||r.mesRef&&String(r.mesRef.getFullYear())===$('fAno').value)&&(!$('fReg').value||r.reg===$('fReg').value)&&(!$('fTsp').value||norm(r.tsp)===norm($('fTsp').value))&&(!$('fUf').value||r.uf===$('fUf').value)&&(!$('fCid').value||r.cidade===$('fCid').value)&&(!$('fStatus').value||r.statusFonte===$('fStatus').value)&&(!q||norm([r.nf,r.dest,r.cidade,r.uf,r.tsp,r.cte].join(' ')).includes(q)));pageNF=1;renderAll()}
 function otdColor(v){return v>=97?'#16a34a':v>=90?'#f4c542':'#e2202f'}function cnt(a,s){return a.filter(x=>x.status===s).length}function otd(a){let d=cnt(a,'Dentro do Prazo'),f=cnt(a,'Fora do Prazo');return d+f?d/(d+f)*100:0}function card(k,v,n,c=''){return `<div class="card ${c}"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n||''}</div></div>`}
 function agg(a,key){let m={};a.forEach(r=>{let k=r[key]||'(vazio)';m[k]??=[];m[k].push(r)});return Object.entries(m).map(([k,x])=>({k,a:x,n:x.length,d:cnt(x,'Dentro do Prazo'),f:cnt(x,'Fora do Prazo'),p:cnt(x,'Pendente'),otd:otd(x),valor:x.reduce((s,r)=>s+r.valor,0)}))}
 function bars(data,color='blue',clickKey=''){let max=Math.max(1,...data.map(x=>x.n));return data.map(x=>`<div class="barrow" ${clickKey?`onclick="drill('${clickKey}','${js(x.k)}')" style="cursor:pointer"`:''}><b title="${esc(x.k)}">${esc(x.k)}</b><div class="track"><div class="fill ${color}" style="width:${x.n/max*100}%"></div></div><b>${fmtN(x.n)}</b></div>`).join('')||'<div class="empty">Sem dados</div>'}
@@ -114,45 +114,24 @@ $('donutG').innerHTML=`<div class="emptyState"><b>Carregando CSV...</b><span>Agu
 $('regBars').innerHTML=$('statusBars').innerHTML=$('tspBars').innerHTML='<div class="empty">Carregando dados...</div>';
 renderMap();
 async function carregarCSVAutomaticamente(){
- const mostrarFalhaAutomatica=erro=>{
+ try{
+  const url=`./base.csv?v=${Date.now()}`;
+  const resposta=await fetch(url,{method:'GET',cache:'no-store',headers:{'Cache-Control':'no-cache'}});
+  if(!resposta.ok)throw new Error(`HTTP ${resposta.status}`);
+  const ultimaAlteracao=resposta.headers.get('Last-Modified');
+  if(ultimaAlteracao)mostrarAtualizacaoCSV(ultimaAlteracao);
+  const buffer=await resposta.arrayBuffer(),u=new Uint8Array(buffer);
+  let texto=new TextDecoder('utf-8').decode(u);
+  if((texto.match(/�/g)||[]).length>10)texto=new TextDecoder('windows-1252').decode(u);
+  loadText(texto,'base.csv automático');
+ }catch(erro){
   console.error('Falha no carregamento automático do CSV:',erro);
   document.body.classList.add('noData');
   $('sourceInfo').textContent='CSV automático indisponível | use o botão Importar CSV';
-  $('donutG').innerHTML=`<div class="emptyState"><b>Não foi possível carregar o CSV automaticamente</b><span>Use o botão Importar CSV. O arquivo selecionado manualmente continuará funcionando normalmente.</span></div>`;
+  $('donutG').innerHTML=`<div class="emptyState"><b>CSV automático não encontrado</b><span>Confirme que base.csv está na mesma pasta do index.html. Você também pode usar Importar CSV.</span></div>`;
   $('regBars').innerHTML=$('statusBars').innerHTML=$('tspBars').innerHTML='<div class="empty">Aguardando importação manual</div>';
   renderMap();
- };
- try{
-  const url=new URL('base.csv',document.baseURI);
-  url.searchParams.set('v',`${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  const resposta=await fetch(url.href,{method:'GET',cache:'no-store',headers:{'Accept':'text/csv,text/plain;q=0.9,*/*;q=0.1','Cache-Control':'no-cache, no-store, must-revalidate','Pragma':'no-cache'}});
-  if(!resposta.ok)throw new Error(`base.csv não encontrado: HTTP ${resposta.status}`);
-  const ultimaAlteracao=resposta.headers.get('Last-Modified');
-  const buffer=await resposta.arrayBuffer(),u=new Uint8Array(buffer);
-  let texto=new TextDecoder('utf-8',{fatal:false}).decode(u).replace(/^\uFEFF/,'');
-  if((texto.match(/�/g)||[]).length>10)texto=new TextDecoder('windows-1252').decode(u).replace(/^\uFEFF/,'');
-  const inicio=texto.trimStart().slice(0,300).toLowerCase();
-  if(inicio.startsWith('<!doctype')||inicio.startsWith('<html')||inicio.includes('<head>'))throw new Error('O endereço de base.csv retornou uma página HTML.');
-  const primeiraLinha=(texto.split(/\r?\n/,1)[0]||'').replace(/^\uFEFF/,'').trim();
-  const cabecalhos=primeiraLinha.split(';').map(x=>x.replace(/^"|"$/g,'').trim());
-  const obrigatorios=['NF','CTRC','Status'];
-  const ausentes=obrigatorios.filter(c=>!cabecalhos.includes(c));
-  if(ausentes.length)throw new Error(`CSV publicado inválido. Cabeçalhos ausentes: ${ausentes.join(', ')}`);
-  const raw=parseCSV(texto);
-  const novasLinhas=adapt(raw).filter(r=>r.nf||r.dest||r.cte);
-  if(!novasLinhas.length)throw new Error('O CSV publicado não contém linhas reconhecíveis.');
-  rows=novasLinhas;
-  document.body.classList.remove('noData');
-  if(ultimaAlteracao)mostrarAtualizacaoCSV(ultimaAlteracao);
-  $('sourceInfo').textContent=`base.csv automático | ${fmtN(rows.length)} NFs | mês: Previsão | Meta OTD: 97%`;
-  setupFilters();
-  const hoje=new Date(),mesAtual=String(hoje.getMonth()+1).padStart(2,'0'),anoAtual=String(hoje.getFullYear()),meses=[...new Set(rows.filter(r=>r.mesRef).map(r=>String(r.mesRef.getMonth()+1).padStart(2,'0')))],anos=[...new Set(rows.filter(r=>r.mesRef).map(r=>String(r.mesRef.getFullYear())))];
-  lockedMonth=meses.includes(mesAtual)?mesAtual:(meses.sort().at(-1)||'');
-  lockedYear=anos.includes(anoAtual)?anoAtual:(anos.sort().at(-1)||'');
-  currentMonth=lockedMonth;
-  if(currentPage==='aging'){$('fMes').value='';$('fAno').value=''}else{$('fMes').value=lockedMonth;$('fAno').value=lockedYear}
-  apply();
- }catch(erro){mostrarFalhaAutomatica(erro)}
+ }
 }
 carregarCSVAutomaticamente();
 </script></body></html>
